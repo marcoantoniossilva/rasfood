@@ -4,64 +4,46 @@ import br.com.rasmoo.restaurante.dao.CardapioDao;
 import br.com.rasmoo.restaurante.dao.CategoriaDao;
 import br.com.rasmoo.restaurante.entity.Cardapio;
 import br.com.rasmoo.restaurante.entity.Categoria;
+import br.com.rasmoo.restaurante.util.CargaDeDadosUtil;
 import br.com.rasmoo.restaurante.util.JPAUtil;
+import org.h2.util.json.JsonConstructorUtils;
 
 import javax.persistence.EntityManager;
 import java.math.BigDecimal;
 
- // O método testarEntityManager possui várias explicações sobre estados das entidades
+// O método testarEntityManager possui várias explicações sobre estados das entidades
 
 public class CardapioService {
   public static void main(String[] args) {
-    //Interface da Jpa que é responsável por manipular as entidades
-    EntityManager entityManager = JPAUtil.getEntityManagerRasfood();
-
-    cadastrarProdutoCardapio(entityManager, cadastrarCategoria(entityManager));
-  }
-
-  private static Categoria cadastrarCategoria(EntityManager entityManager) {
-    CategoriaDao categoriaDao = new CategoriaDao(entityManager);
-    Categoria pratoPrincipal = new Categoria("Prato principal");
-
+    EntityManager entityManager = JPAUtil.getEntityManagerRasFood();
     entityManager.getTransaction().begin();
-    categoriaDao.cadastrar(pratoPrincipal);
-
-    entityManager.getTransaction().commit();
-    entityManager.clear();
-
-    return pratoPrincipal;
-  }
-
-  private static void cadastrarProdutoCardapio(EntityManager entityManager, Categoria categoria) {
-
-    Cardapio risoto = new Cardapio();
-    risoto.setNome("Risoto de frutos do mar");
-    risoto.setDescricao("Risoto acompanhado de lula, polvo e mariscos");
-    risoto.setDisponivel(true);
-    risoto.setCategoria(categoria);
-    risoto.setValor(BigDecimal.valueOf(88.5));
-
-    Cardapio salmao = new Cardapio();
-    salmao.setNome("Salmao ao molho de maracujá");
-    salmao.setDescricao("Salmao grelhado ao molhode maracujá");
-    salmao.setDisponivel(true);
-    salmao.setCategoria(categoria);
-    salmao.setValor(BigDecimal.valueOf(60.00));
-
+    CargaDeDadosUtil.cadastarCategorias(entityManager);
+    CargaDeDadosUtil.cadastrarProdutosCardapio(entityManager);
     CardapioDao cardapioDao = new CardapioDao(entityManager);
-    entityManager.getTransaction().begin();
+    CategoriaDao categoriaDao = new CategoriaDao(entityManager);
 
-    cardapioDao.cadastrar(risoto);
-    entityManager.flush();
-    cardapioDao.cadastrar(salmao);
-    entityManager.flush();
-    System.out.println("O prato consultado foi: " + cardapioDao.consultar(risoto.getId()));
-    System.out.println("O prato consultado foi: " + cardapioDao.consultar(salmao.getId()));
+    System.out.println("Lista de produtos:");
+    cardapioDao.consultarTodos().forEach(System.out::println);
 
+    System.out.println("Lista de produtos que custam R$59,50:");
+    cardapioDao.consultarPorValor(BigDecimal.valueOf(59.50)).forEach(System.out::println);
+
+    System.out.println("Lista de produtos da categoria 1:");
+    categoriaDao.consultar(1)
+        .ifPresentOrElse((categoria) -> {
+          cardapioDao.consultarPorCategoria(categoria)
+              .forEach(System.out::println);
+        }, () -> System.out.println("Nada encontrado!"));
+
+    System.out.println("Lista de produtos da categoria \"Saladas\":");
+    cardapioDao.consultarPorNomeCategoria("Saladas").forEach(System.out::println);
+
+    System.out.println("Produto pesquisado: \"Cordeiro\":");
+    cardapioDao.consultarPorNome("Cordeiro").ifPresentOrElse(System.out::println, () -> System.out.println("Nada encontrado!"));
     entityManager.close();
   }
 
-  public void testarEntityManager(EntityManager entityManager, Categoria categoria){
+  public static void testarEntityManager(EntityManager entityManager, Categoria categoria) {
     Cardapio risoto = new Cardapio();
     risoto.setNome("Risoto de frutos do mar");
     risoto.setDescricao("Risoto acompanhado de lula, polvo e mariscos");
@@ -79,6 +61,7 @@ public class CardapioService {
 
 
     CardapioDao cardapioDao = new CardapioDao(entityManager);
+    CategoriaDao categoriaDao = new CategoriaDao(entityManager);
     entityManager.getTransaction().begin();
     cardapioDao.cadastrar(risoto);
     entityManager.flush();
@@ -94,16 +77,16 @@ public class CardapioService {
 
     cardapioDao.cadastrar(salmao); //Cadastrando novo prato
     entityManager.flush();
-    System.out.println("O prato consultado foi: " + cardapioDao.consultar(salmao.getId())); // Testando consulta
+    System.out.println("O prato consultado foi: " + cardapioDao.consultarPorId(salmao.getId())); // Testando consulta
     salmao.setDisponivel(false);
     /* Como o estado da entidade é MANAGED, um simples set gera um update no BD no momento
      * do entityManager.getTransaction().commit(), se estiver usando entityManager.clear() para atualizar
      * é preciso usar o entityManager.flush();
      */
     entityManager.flush();
-    System.out.println("O prato consultado foi: " + cardapioDao.consultar(salmao.getId())); // Testando alteração de parâmetro
+    System.out.println("O prato consultado foi: " + cardapioDao.consultarPorId(salmao.getId())); // Testando alteração de parâmetro
     cardapioDao.excluir(salmao); // Excluindo
-    System.out.println("O prato consultado foi: " + cardapioDao.consultar(salmao.getId()));// Testando exclusao
+    System.out.println("O prato consultado foi: " + cardapioDao.consultarPorId(salmao.getId()));// Testando exclusao
 
 
     entityManager.clear();
@@ -116,7 +99,26 @@ public class CardapioService {
     salmao.setValor(BigDecimal.valueOf(100.00));
     cardapioDao.atualizar(salmao); // Entidade voltou pro estado de MANAGED
     entityManager.flush();
-    System.out.println("O prato consultado foi: " + cardapioDao.consultar(salmao.getId()));// Testando alteração depois de entityManager.clear();
+    System.out.println("O prato consultado foi: " + cardapioDao.consultarPorId(salmao.getId()));// Testando alteração depois de entityManager.clear();
+
+    System.out.println("Lista de produtos:");
+    cardapioDao.consultarTodos().forEach(System.out::println);
+
+    System.out.println("Lista de produtos que custam R$59,00:");
+    cardapioDao.consultarPorValor(BigDecimal.valueOf(59.00)).forEach(System.out::println);
+
+    System.out.println("Lista de produtos da categoria 1:");
+    categoriaDao.consultar(1)
+        .ifPresentOrElse((cat) -> {
+          cardapioDao.consultarPorCategoria(cat)
+              .forEach(System.out::println);
+        }, () -> System.out.println("Nada encontrado!"));
+
+    System.out.println("Lista de produtos po da categoria \"Saladas\":");
+    cardapioDao.consultarPorNomeCategoria("Saladas").forEach(System.out::println);
+
+    System.out.println("Produto pesquisado: \"Cordeiro\":");
+    cardapioDao.consultarPorNome("Cordeiro").ifPresentOrElse(System.out::println, () -> System.out.println("Nada encontrado!"));
 
     entityManager.close(); // Entidade passou pro estado de DETACHED, sem volta.
   }

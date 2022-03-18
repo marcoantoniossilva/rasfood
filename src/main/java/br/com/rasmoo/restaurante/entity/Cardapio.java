@@ -24,7 +24,8 @@ public class Cardapio {
   @Column(name = "data_de_registro")
   private LocalDateTime dataDeRegistro = LocalDateTime.now();
 
-  @ManyToOne //Muitos cardápios estão relacionados a somente uma categoria, ou seja, uma categoria pode ter muitos cardápios.
+  @ManyToOne
+  //Muitos cardápios estão relacionados a somente uma categoria, ou seja, uma categoria pode ter muitos cardápios.
   private Categoria categoria;
 
   public Cardapio() {
@@ -36,6 +37,14 @@ public class Cardapio {
     this.disponivel = disponivel;
     this.valor = valor;
     this.dataDeRegistro = dataDeRegistro;
+    this.categoria = categoria;
+  }
+
+  public Cardapio(String nome, String descricao, Boolean disponivel, BigDecimal valor, Categoria categoria) {
+    this.nome = nome;
+    this.descricao = descricao;
+    this.disponivel = disponivel;
+    this.valor = valor;
     this.categoria = categoria;
   }
 

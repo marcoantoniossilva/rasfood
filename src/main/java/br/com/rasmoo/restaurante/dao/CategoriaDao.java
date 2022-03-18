@@ -3,6 +3,10 @@ package br.com.rasmoo.restaurante.dao;
 import br.com.rasmoo.restaurante.entity.Categoria;
 
 import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.swing.text.html.Option;
+import java.util.List;
+import java.util.Optional;
 
 public class CategoriaDao {
 
@@ -16,8 +20,17 @@ public class CategoriaDao {
     this.entityManager.persist(categoria);
   }
 
-  public Categoria consultar(final Integer id) {
-    return this.entityManager.find(Categoria.class, id);
+  public Optional<Categoria> consultar(final Integer id) {
+    try {
+      return Optional.ofNullable(this.entityManager.find(Categoria.class, id));
+    } catch (NoResultException ex) {
+      return Optional.empty();
+    }
+  }
+
+  public List<Categoria> consultarTodos() {
+    String query = "SELECT c FROM Categoria c";
+    return this.entityManager.createQuery(query, Categoria.class).getResultList();
   }
 
   public void atualizar(final Categoria categoria) {
